@@ -1,20 +1,12 @@
+from argparse import ArgumentParser
 import ast
 import collections
 import os
 
-from nltk import pos_tag
-
-
-def flat(_list):
-    """ [(1,2), (3,4)] -> [1, 2, 3, 4]"""
-    return sum([list(item) for item in _list], [])
-
-
-def is_verb(word):
-    if not word:
-        return False
-    pos_info = pos_tag([word])
-    return pos_info[0][1] == 'VB'
+from helpers import (is_verb,
+                     flat,
+                     split_snake_case_to_words,
+                     is_magic_name)
 
 
 def find_py_files_in_path(root):
@@ -66,14 +58,6 @@ def extract_verbs_from_snake_case(name):
             if is_verb(word)]
 
 
-def split_snake_case_to_words(name):
-    return [word for word in name.split('_') if word]
-
-
-def is_magic_name(name):
-    return name.startswith('__') and name.endswith('__')
-
-
 def receive_names_in_path(_path):
     all_names = []
     for tree in fetch_trees_from_path(_path):
@@ -97,25 +81,50 @@ def receive_function_verbs_in_path(_path):
                  in receive_function_names_in_path(_path)])
 
 
-def get_top_words_in_path(_path, top_size=10):
-    all_words = receive_names_in_path(_path)
-    return collections.Counter(all_words).most_common(top_size)
+def get_top_words_in_path(path, top=10):
+    all_words = receive_names_in_path(path)
+    return collections.Counter(all_words).most_common(top)
 
 
-def get_top_verbs_in_path(_path, top_size=10):
-    all_verbs = receive_function_verbs_in_path(_path)
-    return collections.Counter(all_verbs).most_common(top_size)
+def get_top_verbs_in_path(path, top=10):
+    all_verbs = receive_function_verbs_in_path(path)
+    return collections.Counter(all_verbs).most_common(top)
 
 
-def get_top_functions_names_in_path(_path, top_size=10):
-    all_function_names = receive_function_names_in_path(_path)
-    return collections.Counter(all_function_names).most_common(top_size)
+def get_top_functions_names_in_path(path, top=10):
+    all_function_names = receive_function_names_in_path(path)
+    return collections.Counter(all_function_names).most_common(top)
+
+
+def parse_args():
+    parser = ArgumentParser(description='Calculate words occurrences in path')
+
+    subparsers = parser.add_subparsers()
+
+    parser_words = subparsers.add_parser(
+        'words',
+        help='- words occurrences')
+    parser_words.add_argument('--path', help='path to parse', default='./')
+    parser_words.add_argument('--top', help='top number to return', type=int)
+    parser_words.set_defaults(func=get_top_words_in_path)
+
+    parser_verbs = subparsers.add_parser(
+        'verbs',
+        help='- verbs occurrences')
+    parser_verbs.add_argument('--path', help='path to parse', default='./')
+    parser_verbs.add_argument('--top', help='top number to return', type=int)
+    parser_verbs.set_defaults(func=get_top_verbs_in_path)
+
+    parser_funcs = subparsers.add_parser(
+        'functions',
+        help='- function names occurrences')
+    parser_funcs.add_argument('--path', help='path to parse', default='./')
+    parser_funcs.add_argument('--top', help='top number to return', type=int)
+    parser_funcs.set_defaults(func=get_top_functions_names_in_path)
+
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
-    from pprint import pprint
-    from sys import argv
-
-    pprint(get_top_words_in_path(argv[1], top_size=7))
-    pprint(get_top_verbs_in_path(argv[1], top_size=5))
-    pprint(get_top_functions_names_in_path(argv[1]))
+    args = parse_args()
+    print(args.func(args.path, args.top))
